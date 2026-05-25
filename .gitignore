@@ -7,6 +7,7 @@ dist/
 installer_build/
 installer_payload*/
 installer_payload_latest/
+github_publish/
 isir/
 
 data/
