@@ -1,0 +1,36 @@
+[Version]
+Class=IEXPRESS
+SEDVersion=3
+[Options]
+PackagePurpose=InstallApp
+ShowInstallProgramWindow=1
+HideExtractAnimation=1
+UseLongFileName=1
+InsideCompressed=1
+CAB_FixedSize=0
+CAB_ResvCodeSigning=0
+RebootMode=N
+InstallPrompt=
+DisplayLicense=
+FinishMessage=Instalace aplikace ISIR Kontrola byla dokoncena.
+TargetName=C:\Users\Petr\Desktop\isir\ISIR-Kontrola-Setup.exe
+FriendlyName=ISIR Kontrola
+AppLaunched=install.cmd
+PostInstallCmd=<None>
+AdminQuietInstCmd=
+UserQuietInstCmd=
+SourceFiles=SourceFiles
+[Strings]
+FILE0="ISIR-Kontrola.exe"
+FILE1="install.cmd"
+FILE2="README-installer.txt"
+FILE3="uninstall.cmd"
+FILE4="reset_data.cmd"
+[SourceFiles]
+SourceFiles0=C:\Users\Petr\Desktop\isir\installer_build\
+[SourceFiles0]
+%FILE0%=
+%FILE1%=
+%FILE2%=
+%FILE3%=
+%FILE4%=

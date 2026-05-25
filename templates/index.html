@@ -1,0 +1,918 @@
+﻿<!doctype html>
+<html lang="cs">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Klienti ISIR</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            color: #1f2937;
+            background: linear-gradient(180deg, #f4f6f9 0%, #eaedf2 50%, #f4f6f9 100%);
+            background-attachment: fixed;
+        }
+        main {
+            width: min(1180px, calc(100% - 32px));
+            margin: 28px auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 18px;
+            padding: 14px 16px;
+            border: 2px solid #94a3b8;
+            border-radius: 8px;
+            background: #fbfdff;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        }
+        h1 {
+            margin: 0;
+            font-size: 26px;
+        }
+        .panel {
+            background: #fff;
+            background: #fbfdff;
+            border: 1px solid #d8dee4;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .client-input-panel {
+            border: 2px solid #94a3b8;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        }
+        .content-layout {
+            display: grid;
+            grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
+            gap: 16px;
+            align-items: start;
+        }
+        .sidebar {
+            position: sticky;
+            top: 16px;
+        }
+        .table-area {
+            min-width: 0;
+        }
+        .add-form {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            padding: 14px;
+        }
+        .import-form {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            padding: 14px;
+            border-top: 1px solid #d8dee4;
+        }
+        .import-title,
+        .project-title {
+            display: block;
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid #2563eb;
+            border-radius: 6px;
+            color: #fff;
+            background: #2563eb;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+        }
+        label {
+            display: grid;
+            gap: 5px;
+            font-size: 13px;
+            color: #4b5563;
+        }
+        input {
+            width: 100%;
+            padding: 9px;
+            border: 1px solid #bcc6d0;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+        button,
+        .button {
+            display: inline-block;
+            padding: 9px 12px;
+            border: 1px solid #2563eb;
+            border-radius: 6px;
+            color: #fff;
+            background: #2563eb;
+            font-size: 14px;
+            text-decoration: none;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .button-light {
+            border-color: #cbd5e1;
+            color: #1f2937;
+            background: #fff;
+            background: #fbfdff;
+        }
+        .small-button {
+            padding: 6px 9px;
+            font-size: 13px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+        .client-table-shell {
+            overflow: hidden;
+            border: 2px solid #64748b;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 3px 12px rgba(15, 23, 42, 0.16);
+        }
+        th,
+        td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #edf0f3;
+            text-align: left;
+            vertical-align: middle;
+            font-size: 13px;
+            line-height: 1.18;
+        }
+        th {
+            color: #fff;
+            background: #334155;
+            font-weight: 700;
+            font-size: 12px;
+            line-height: 1.12;
+        }
+        th a {
+            color: inherit;
+            text-decoration: none;
+        }
+        th a:hover {
+            text-decoration: underline;
+        }
+        tr:last-child td { border-bottom: 0; }
+        tr.changed-row td {
+            background: #fef3c7;
+        }
+        tr.changed-row td:first-child {
+            border-left: 5px solid #f59e0b;
+        }
+        .change-badge {
+            display: inline-block;
+            margin-left: 4px;
+            padding: 1px 5px;
+            border-radius: 999px;
+            color: #92400e;
+            background: #fde68a;
+            font-size: 10px;
+            font-weight: 700;
+            vertical-align: middle;
+        }
+        .client-link {
+            color: #111827;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .client-link:hover { text-decoration: underline; }
+        .status {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 12px;
+        }
+        .status-ok { color: #166534; background: #dcfce7; }
+        .status-warning { color: #9a3412; background: #ffedd5; }
+        .status-danger { color: #991b1b; background: #fee2e2; }
+        .status-muted { color: #4b5563; background: #e5e7eb; }
+        .status-black { color: #111827; background: #e5e7eb; }
+        .empty {
+            padding: 24px;
+            text-align: center;
+            color: #6b7280;
+        }
+        .actions {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        td .actions {
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 4px;
+        }
+        td .button,
+        td button {
+            min-width: 64px;
+            padding: 5px 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            line-height: 1.15;
+            text-align: center;
+        }
+        .main-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .main-actions button {
+            min-width: 210px;
+            justify-content: center;
+            font-weight: 700;
+        }
+        .settings-gear {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
+            padding: 0;
+            border: 1px solid #cbd5e1;
+            border-radius: 50%;
+            color: #334155;
+            background: #fbfdff;
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+            font-size: 21px;
+            line-height: 1;
+            text-decoration: none;
+        }
+        .settings-gear:hover {
+            color: #0f172a;
+            border-color: #94a3b8;
+            background: #eef4fb;
+        }
+        .check-form {
+            margin: 0;
+        }
+        .actions form {
+            margin: 0;
+        }
+        .sidebar-tools {
+            padding: 12px;
+        }
+        .sidebar-tools .button {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .sidebar-tools .button:last-child {
+            margin-bottom: 0;
+        }
+        .restore-form {
+            display: grid;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #d8dee4;
+        }
+        .restore-form .button {
+            margin-bottom: 0;
+        }
+        .ai-auto-status {
+            padding: 12px;
+            font-size: 12px;
+        }
+        .ai-auto-status strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+        .ai-auto-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .ai-auto-grid span,
+        .ai-auto-errors li,
+        .ai-auto-running li {
+            padding: 5px 6px;
+            border: 1px solid #d8dee4;
+            border-radius: 5px;
+            background: #fff;
+        }
+        .ai-auto-errors,
+        .ai-auto-running {
+            margin: 8px 0 0;
+            padding: 0;
+            list-style: none;
+        }
+        .ai-auto-errors li {
+            color: #991b1b;
+            background: #fff1f2;
+            border-color: #fecdd3;
+        }
+        .ai-auto-running li {
+            color: #1d4ed8;
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+        .project-filter {
+            padding: 12px 14px;
+        }
+        .project-title { margin-bottom: 10px; }
+        .project-filter label {
+            display: flex;
+            grid-auto-flow: unset;
+            grid-template-columns: unset;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+            color: #1f2937;
+        }
+        .project-filter input {
+            width: auto;
+        }
+        .project-filter .button {
+            width: 100%;
+            margin-top: 4px;
+            text-align: center;
+        }
+        .project-check-form {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #d8dee4;
+        }
+        .project-check-form button,
+        .import-submit {
+            width: 100%;
+            padding: 7px 9px;
+            font-size: 12px;
+            background: #eef6ff;
+            border-color: #9db8d8;
+            color: #1f3a5f;
+            font-weight: 700;
+        }
+        .project-check-form button:hover,
+        .import-submit:hover {
+            background: #e4f0fb;
+        }
+        .status-filter {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 12px;
+            color: #1f2937;
+            background: #fbfdff;
+            border: 2px solid #94a3b8;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            border-radius: 8px;
+        }
+        .status-filter label {
+            display: inline-flex;
+            grid-auto-flow: column;
+            gap: 6px;
+            align-items: center;
+            color: #1f2937;
+        }
+        .status-filter input {
+            width: auto;
+        }
+        .status-filter .button-light {
+            border-color: #94a3b8;
+            background: #fff;
+        }
+        .important-filter-button {
+            border-color: #d6c7a7;
+            color: #374151;
+            background: #fffaf0;
+            font-weight: 600;
+        }
+        .important-filter-button:hover {
+            background: #f8f0df;
+        }
+        .error {
+            margin-bottom: 16px;
+            padding: 10px 12px;
+            border: 1px solid #fed7aa;
+            border-radius: 8px;
+            color: #9a3412;
+            background: #fff7ed;
+        }
+        .message {
+            margin-bottom: 16px;
+            padding: 10px 12px;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            color: #166534;
+            background: #f0fdf4;
+        }
+        .check-progress {
+            padding: 10px 12px;
+        }
+        .check-progress.active {
+            border: 2px solid #60a5fa;
+            background: #eff6ff;
+            animation: progress-pulse 1.2s ease-in-out infinite;
+        }
+        @keyframes progress-pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.22);
+            }
+            50% {
+                box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.12);
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .check-progress.active {
+                animation: none;
+            }
+        }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .progress-title {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            min-width: 0;
+        }
+        .progress-header strong {
+            font-size: 16px;
+        }
+        .progress-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-left: auto;
+        }
+        .progress-close {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            color: #1e3a8a;
+            background: rgba(255, 255, 255, 0.75);
+            font-size: 18px;
+            line-height: 1;
+        }
+        .progress-close:hover {
+            border-color: #60a5fa;
+            background: #fff;
+        }
+        .progress-state {
+            padding: 4px 8px;
+            border-radius: 999px;
+            color: #1d4ed8;
+            background: #dbeafe;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .progress-state.finished {
+            color: #166534;
+            background: #dcfce7;
+        }
+        .progress-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .progress-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: center;
+            min-height: 34px;
+            padding: 6px 9px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            background: #fff;
+        }
+        .progress-item span {
+            color: #6b7280;
+            font-size: 12px;
+        }
+        .progress-item strong {
+            font-size: 18px;
+        }
+        .progress-current,
+        .progress-errors,
+        .progress-new-documents {
+            margin-top: 10px;
+            color: #4b5563;
+            font-size: 14px;
+        }
+        .progress-errors ul,
+        .progress-new-documents ul {
+            margin: 6px 0 0;
+            padding-left: 20px;
+        }
+        .progress-errors li,
+        .progress-new-documents li {
+            margin: 3px 0;
+        }
+        .progress-new-documents a {
+            color: #1d4ed8;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .progress-new-documents a:hover {
+            text-decoration: underline;
+        }
+        .mini-updates {
+            margin-bottom: 8px;
+            padding: 6px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            color: #334155;
+            background: #f8fafc;
+            font-size: 11px;
+            line-height: 1.25;
+        }
+        .mini-updates strong {
+            font-size: 11px;
+        }
+        .mini-updates ul {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 10px;
+            margin: 4px 0 0;
+            padding-left: 0;
+            list-style: none;
+        }
+        .mini-updates li {
+            margin: 0;
+            white-space: nowrap;
+        }
+        .mini-updates a {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+        .mini-updates a:hover {
+            text-decoration: underline;
+        }
+        .hint {
+            margin-top: 6px;
+            color: #6b7280;
+            font-size: 12px;
+        }
+        .danger {
+            border-color: #dc2626;
+            color: #fff;
+            background: #dc2626;
+        }
+        .success-button {
+            border-color: #16a34a;
+            color: #fff;
+            background: #16a34a;
+            font-weight: 700;
+        }
+        .success-button:hover {
+            border-color: #15803d;
+            background: #15803d;
+        }
+        @media (max-width: 850px) {
+            header { align-items: flex-start; flex-direction: column; }
+            .content-layout { grid-template-columns: 1fr; }
+            .sidebar { position: static; }
+            .main-actions { width: 100%; }
+            .main-actions form { flex: 1; }
+            .main-actions button { width: 100%; min-width: 0; }
+            .settings-gear { flex: 0 0 38px; }
+            .progress-grid { grid-template-columns: 1fr; }
+            table,
+            thead,
+            tbody,
+            tr,
+            th,
+            td {
+                display: block;
+            }
+            thead { display: none; }
+            tr {
+                border-bottom: 1px solid #d8dee4;
+                padding: 10px;
+            }
+            td {
+                border: 0;
+                padding: 6px 0;
+            }
+            td::before {
+                content: attr(data-label);
+                display: block;
+                color: #6b7280;
+                font-size: 12px;
+                margin-bottom: 2px;
+            }
+        }
+    </style>
+</head>
+<body>
+<main>
+        <header>
+            <h1>Klienti</h1>
+        <div class="main-actions">
+            <a class="settings-gear" href="{{ url_for('settings') }}" title="Vložte API klíč" aria-label="Vložte API klíč">⚙</a>
+            <form method="post" action="{{ url_for('clear_data') }}" onsubmit="return confirm('Opravdu vymazat vĹˇechna klientskĂˇ data a staĹľenĂ© PDF?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="danger" type="submit">Vymaž všechna data</button>
+            </form>
+            <form class="check-form" method="post" action="{{ url_for('check_now') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="success-button" type="submit">Hromadná kontrola ISIR</button>
+            </form>
+        </div>
+    </header>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+    {% if message %}
+        <div class="message">{{ message }}</div>
+    {% endif %}
+
+    <div id="check-progress-host">
+    {% if check_progress.state != "idle" %}
+        <section class="panel check-progress {% if check_progress.state in ['queued', 'running'] %}active{% endif %}">
+            <div class="progress-header">
+                <div class="progress-title">
+                    <strong>Průběh kontroly ISIR{% if check_progress.source %} - {{ check_progress.source }}{% endif %}</strong>
+                </div>
+                <div class="progress-controls">
+                    <span class="progress-state {% if check_progress.state == 'finished' %}finished{% endif %}">
+                        {% if check_progress.state == "queued" %}
+                            čeká na spuštění
+                        {% elif check_progress.state == "running" %}
+                            probíhá
+                        {% else %}
+                            dokončeno
+                        {% endif %}
+                    </span>
+                    <form method="post" action="{{ url_for('dismiss_check_progress_route') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="progress-close" type="submit" title="Skrýt průběh kontroly" aria-label="Skrýt průběh kontroly">×</button>
+                    </form>
+                </div>
+            </div>
+            <div class="progress-grid">
+                <div class="progress-item">
+                    <span>Ještě v pořadí</span>
+                    <strong>{{ check_progress.pending }}</strong>
+                </div>
+                <div class="progress-item">
+                    <span>Úspěšně</span>
+                    <strong>{{ check_progress.success }}</strong>
+                </div>
+                <div class="progress-item">
+                    <span>Chyba</span>
+                    <strong>{{ check_progress.error }}</strong>
+                </div>
+            </div>
+            <div class="progress-grid">
+                <div class="progress-item">
+                    <span>Nalezená řízení</span>
+                    <strong>{{ check_progress.insolvencies }}</strong>
+                </div>
+                <div class="progress-item">
+                    <span>Oddlužení</span>
+                    <strong>{{ check_progress.debt_relief }}</strong>
+                </div>
+                <div class="progress-item">
+                    <span>Odškrtnuto</span>
+                    <strong>{{ check_progress.closed }}</strong>
+                </div>
+            </div>
+            {% if check_progress.current_client %}
+                <div class="progress-current">Právě se kontroluje: <strong>{{ check_progress.current_client }}</strong></div>
+            {% endif %}
+            {% if check_progress.errors %}
+                <div class="progress-errors">
+                    <strong>Chyby:</strong>
+                    <ul>
+                        {% for item in check_progress.errors %}
+                            <li><strong>{{ item.client }}</strong>: {{ item.error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </section>
+    {% endif %}
+    </div>
+
+    <div class="content-layout">
+        <aside class="sidebar">
+            <section class="panel client-input-panel">
+                <form class="add-form" method="post" action="{{ url_for('add_client') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit">Přidat klienta</button>
+                    <label>Jméno
+                        <input name="first_name" required>
+                    </label>
+                    <label>Příjmení
+                        <input name="last_name" required>
+                    </label>
+                    <label>Datum narození
+                        <input type="date" name="birth_date" required>
+                    </label>
+                </form>
+                <form class="import-form" method="post" action="{{ url_for('import_clients') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="import-title">Hromadný import XLSX</div>
+                    <label>Vybrat soubor
+                        <input type="file" name="clients_file" accept=".xlsx" required>
+                        <span class="hint">Sloupce: jméno, příjmení, datum narození, projekt. Po importu se ISIR zkontroluje na pozadí.</span>
+                    </label>
+                    <button class="import-submit" type="submit">Importovat a zkontrolovat</button>
+                </form>
+            </section>
+            <section class="panel client-input-panel project-filter">
+                <form method="get" action="{{ url_for('index') }}">
+                    <input type="hidden" name="sort" value="{{ sort_key }}">
+                    <input type="hidden" name="direction" value="{{ direction }}">
+                    <input type="hidden" name="project_filter" value="1">
+                    {% if selected_in_deadline %}
+                        <input type="hidden" name="deadline_filter" value="1">
+                        <input type="hidden" name="in_deadline" value="1">
+                    {% endif %}
+                    {% for status in selected_statuses %}
+                        <input type="hidden" name="status" value="{{ status }}">
+                    {% endfor %}
+                    <div class="project-title">Klienti dle projektů</div>
+                    {% for project in project_filter_options %}
+                        <label>
+                            <input type="checkbox" name="project" value="{{ project }}" {% if project in selected_projects %}checked{% endif %} onchange="this.form.submit()">
+                            {{ project }}
+                        </label>
+                    {% endfor %}
+                    {% if selected_projects %}
+                        <a class="button button-light" href="{{ url_for('index', sort=sort_key, direction=direction, status=selected_statuses, in_deadline='1' if selected_in_deadline else None, deadline_filter='1' if selected_in_deadline else None, clear_project=1) }}">Zobrazit všechny projekty</a>
+                    {% endif %}
+                </form>
+                <form class="project-check-form" method="post" action="{{ url_for('check_selected_projects') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% for project in selected_projects %}
+                        <input type="hidden" name="project" value="{{ project }}">
+                    {% endfor %}
+                    <button type="submit">Kontrola ISIR dle projektu</button>
+                </form>
+            </section>
+        </aside>
+
+        <section class="table-area" id="table-area">
+            {% if check_progress.new_documents %}
+                <div class="mini-updates">
+                    <strong>Nové dokumenty:</strong>
+                    <ul>
+                        {% for item in check_progress.new_documents %}
+                            <li>
+                                {% if item.client_id %}
+                                    <a href="{{ url_for('client_detail', client_id=item.client_id) }}">{{ item.client }}</a>
+                                {% else %}
+                                    {{ item.client }}
+                                {% endif %}
+                                +{{ item.count }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+            {% if clients %}
+                {% if status_options %}
+                    <form class="status-filter" method="get" action="{{ url_for('index') }}">
+                        <input type="hidden" name="sort" value="{{ sort_key }}">
+                        <input type="hidden" name="direction" value="{{ direction }}">
+                        <input type="hidden" name="deadline_filter" value="1">
+                        {% for project in selected_projects %}
+                            <input type="hidden" name="project" value="{{ project }}">
+                        {% endfor %}
+                        <strong>Filtr:</strong>
+                        {% if important_statuses %}
+                            <a class="button important-filter-button" href="{{ url_for('index', sort=sort_key, direction=direction, status=important_statuses, project=selected_projects, in_deadline='1' if selected_in_deadline else None, deadline_filter='1' if selected_in_deadline else None) }}">Zobrazit nalezené řízení</a>
+                        {% endif %}
+                        {% for status in status_options %}
+                            <label>
+                                <input type="checkbox" name="status" value="{{ status }}" {% if status in selected_statuses %}checked{% endif %} onchange="this.form.submit()">
+                                {{ status }}
+                            </label>
+                        {% endfor %}
+                        <label>
+                            <input type="checkbox" name="in_deadline" value="1" {% if selected_in_deadline %}checked{% endif %} onchange="this.form.submit()">
+                            Ve lhůtě pro podávání přihlášek
+                        </label>
+                        {% if selected_statuses or selected_in_deadline %}
+                            <a class="button button-light" href="{{ url_for('index', sort=sort_key, direction=direction, project=selected_projects, clear_status=1) }}">Zobrazit vše</a>
+                        {% endif %}
+                    </form>
+                {% endif %}
+                <div class="client-table-shell">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th><a href="{{ sort_url('client') }}">Klient</a></th>
+                            <th><a href="{{ sort_url('birth_date') }}">Datum narození</a></th>
+                            <th><a href="{{ sort_url('status') }}">Stav insolvence</a></th>
+                            <th><a href="{{ sort_url('case') }}">Spisová značka</a></th>
+                            <th><a href="{{ sort_url('first_filing') }}">Datum prvního podání</a></th>
+                            <th>Poslední událost</th>
+                            <th>Datum poslední kontroly</th>
+                            <th>Akce</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                    {% for client in clients %}
+                        {% set case = primary_case(client) %}
+                        <tr class="{% if recently_changed(client) %}changed-row{% endif %}"
+                            data-client="{{ client.last_name }} {{ client.first_name }}"
+                            data-birth="{{ client.birth_date|format_date }}"
+                            data-status="{{ clean_status(case) }}"
+                            data-case="{{ case.spisova_znacka if case else '-' }}"
+                            data-first-filing="{{ first_filing_date(case)|format_date }}"
+                        >
+                            <td data-label="Klient">
+                                <a class="client-link" href="{{ url_for('client_detail', client_id=client.id) }}">
+                                    {{ client.last_name }} {{ client.first_name }}
+                                </a>
+                                {% if recently_changed(client) %}
+                                    <span class="change-badge">změna</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Datum narození">{{ client.birth_date|format_date }}</td>
+                            <td data-label="Stav insolvence">
+                                <span class="status {{ status_class(case) }}">{{ clean_status(case) }}</span>
+                            </td>
+                            <td data-label="Spisová značka">{{ case.spisova_znacka if case else "-" }}</td>
+                            <td data-label="Datum prvního podání">{{ first_filing_date(case)|format_date }}</td>
+                            <td data-label="Poslední událost">{{ event_line(case) }}</td>
+                            <td data-label="Datum poslední kontroly">{{ client.last_checked_at|format_datetime }}</td>
+                            <td data-label="Akce">
+                                <div class="actions">
+                                    <a class="button button-light" href="{{ url_for('client_detail', client_id=client.id) }}">Detail</a>
+                                    <form method="post" action="{{ url_for('delete_client', client_id=client.id) }}" onsubmit="return confirm('Smazat klienta?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button class="danger" type="submit">Smazat</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="panel empty">
+                    {% if selected_projects or selected_statuses or selected_in_deadline %}
+                        Filtru neodpovídá žádný klient.
+                    {% else %}
+                        Zatím není uložený žádný klient.
+                    {% endif %}
+                </div>
+            {% endif %}
+        </section>
+    </div>
+</main>
+{% if check_progress.state in ["queued", "running"] %}
+<script>
+    (function () {
+        const host = document.getElementById("check-progress-host");
+        if (!host) return;
+
+        const timer = window.setInterval(async function () {
+            try {
+                const response = await fetch(window.location.href, { cache: "no-store" });
+                const html = await response.text();
+                const parsed = new DOMParser().parseFromString(html, "text/html");
+                const nextHost = parsed.getElementById("check-progress-host");
+                if (!nextHost) {
+                    window.clearInterval(timer);
+                    return;
+                }
+
+                host.innerHTML = nextHost.innerHTML;
+
+                const tableArea = document.getElementById("table-area");
+                const nextTableArea = parsed.getElementById("table-area");
+                if (tableArea && nextTableArea) {
+                    tableArea.innerHTML = nextTableArea.innerHTML;
+                }
+
+                if (!nextHost.querySelector(".check-progress.active")) {
+                    window.clearInterval(timer);
+                    window.location.reload();
+                }
+            } catch (_error) {
+                window.clearInterval(timer);
+            }
+        }, 3500);
+    })();
+</script>
+{% endif %}
+</body>
+</html>
+

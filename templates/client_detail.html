@@ -1,0 +1,759 @@
+<!doctype html>
+{% set case = primary_case(client) %}
+{% set ai_pending = case and (
+    (case.ai_summary and case.ai_summary.startswith("AI shrnutí se připravuje"))
+    or (case.ai_summary and case.ai_summary.startswith("AI ověření údajů"))
+    or (case.ai_case_study and case.ai_case_study.startswith("AI kazuistika se připravuje"))
+) %}
+{% set case_study_pending = case and case.ai_case_study and case.ai_case_study.startswith("AI kazuistika se připravuje") %}
+{% set case_study_ready = case and case.ai_case_study and not case_study_pending %}
+<html lang="cs">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ client.last_name }} {{ client.first_name }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            color: #1f2937;
+            background: linear-gradient(180deg, #f4f6f9 0%, #eaedf2 50%, #f4f6f9 100%);
+            background-attachment: fixed;
+        }
+        main {
+            width: min(980px, calc(100% - 32px));
+            margin: 28px auto;
+        }
+        .top {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 26px;
+        }
+        .title-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .button-small {
+            padding: 6px 9px;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+        h2 {
+            margin: 0 0 10px;
+            font-size: 18px;
+        }
+        .section {
+            margin-bottom: 16px;
+            padding: 16px;
+            background: #fbfdff;
+            border: 1px solid #d8dee4;
+            border-radius: 8px;
+        }
+        .summary-strip {
+            margin-bottom: 16px;
+            padding: 10px 12px;
+            color: #fff;
+            background: #334155;
+            border: 1px solid #334155;
+            border-radius: 8px;
+        }
+        .compact-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px 14px;
+            align-items: center;
+        }
+        .compact-item span {
+            display: block;
+            margin-bottom: 2px;
+            color: #cbd5e1;
+            font-size: 12px;
+        }
+        .compact-item strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+        .compact-item small {
+            display: block;
+            margin-top: 4px;
+            color: #fde68a;
+            font-size: 12px;
+            line-height: 1.25;
+        }
+        .compact-item-wide {
+            grid-column: span 2;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 13px;
+        }
+        .status-ok { color: #166534; background: #dcfce7; }
+        .status-warning { color: #9a3412; background: #ffedd5; }
+        .status-danger { color: #991b1b; background: #fee2e2; }
+        .status-muted { color: #4b5563; background: #e5e7eb; }
+        .status-black { color: #111827; background: #e5e7eb; }
+        .button,
+        button {
+            display: inline-block;
+            padding: 9px 12px;
+            border: 1px solid #2563eb;
+            border-radius: 6px;
+            color: #fff;
+            background: #2563eb;
+            font-size: 14px;
+            text-decoration: none;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .button-light {
+            border-color: #cbd5e1;
+            color: #1f2937;
+            background: #fff;
+        }
+        .danger {
+            border-color: #dc2626;
+            color: #fff;
+            background: #dc2626;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .edit-panel {
+            display: none;
+            margin-bottom: 16px;
+            padding: 14px;
+            background: #fbfdff;
+            border: 1px solid #d8dee4;
+            border-radius: 8px;
+        }
+        .edit-panel:target {
+            display: block;
+        }
+        .edit-form {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(140px, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+        .edit-form h2 {
+            grid-column: 1 / -1;
+            margin-top: 8px;
+        }
+        .edit-wide {
+            grid-column: span 2;
+        }
+        label {
+            display: grid;
+            gap: 5px;
+            color: #4b5563;
+            font-size: 13px;
+        }
+        input,
+        textarea {
+            width: 100%;
+            padding: 9px;
+            border: 1px solid #bcc6d0;
+            border-radius: 6px;
+            font-size: 15px;
+            font-family: inherit;
+        }
+        textarea {
+            min-height: 72px;
+            resize: vertical;
+        }
+        .compact-value {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+        .expand-value summary {
+            display: inline-block;
+            margin-top: 4px;
+            padding: 4px 7px;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            color: #0f172a;
+            background: #f8fafc;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            list-style: none;
+        }
+        .expand-value summary::-webkit-details-marker {
+            display: none;
+        }
+        .expand-value[open] summary {
+            margin-bottom: 5px;
+        }
+        .document-toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .toolbar-right {
+            margin-left: auto;
+        }
+        .case-study-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 34px;
+            font-size: 13px;
+        }
+        .ai-working {
+            padding: 6px 10px;
+            border: 1px solid #93c5fd;
+            border-radius: 999px;
+            color: #1d4ed8;
+            background: #eff6ff;
+            font-weight: 700;
+            animation: ai-pulse 1.25s ease-in-out infinite;
+        }
+        .case-study-link {
+            padding: 7px 10px;
+            border: 1px solid #bbf7d0;
+            border-radius: 999px;
+            color: #166534;
+            background: #f0fdf4;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .case-study-link:hover {
+            border-color: #22c55e;
+            background: #dcfce7;
+        }
+        @keyframes ai-pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.18);
+            }
+            50% {
+                box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.08);
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .ai-working {
+                animation: none;
+            }
+        }
+        .view-switch {
+            display: inline-flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .view-switch input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        input[name="document-view"] {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .view-switch label {
+            display: inline-block;
+            padding: 9px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            color: #1f2937;
+            background: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        #doc-view-preview:checked ~ .document-toolbar label[for="doc-view-preview"],
+        #doc-view-list:checked ~ .document-toolbar label[for="doc-view-list"] {
+            border-color: #2563eb;
+            color: #fff;
+            background: #2563eb;
+        }
+        #doc-view-preview:checked ~ .document-list {
+            display: none;
+        }
+        #doc-view-list:checked ~ .tabs {
+            display: none;
+        }
+        #doc-view-list:checked ~ .document-list {
+            display: block;
+        }
+        form { margin: 0; }
+        .summary {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            line-height: 1.5;
+        }
+        .muted { color: #6b7280; }
+        .pdf-help {
+            margin: 8px 0 0;
+            color: #6b7280;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+        .tabs {
+            margin-top: 14px;
+        }
+        .tabs input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .tab-labels {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+        }
+        .tab-labels label {
+            min-width: 150px;
+            max-width: 190px;
+            padding: 6px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+        .tab-date {
+            color: #6b7280;
+            font-weight: 700;
+        }
+        .tab-name {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 700;
+        }
+        .tab-count {
+            color: #6b7280;
+        }
+        .tab-panel {
+            display: none;
+            padding: 12px;
+            border: 1px solid #d8dee4;
+            border-radius: 8px;
+            background: #fbfdff;
+        }
+        .doc-title {
+            margin: 0 0 10px;
+            font-weight: 700;
+        }
+        .doc-frame {
+            width: 100%;
+            height: 520px;
+            margin-top: 12px;
+            border: 1px solid #d8dee4;
+            border-radius: 6px;
+            background: #f8fafc;
+        }
+        .document-list {
+            display: none;
+            margin-top: 14px;
+            border: 1px solid #d8dee4;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .document-row {
+            display: grid;
+            grid-template-columns: 120px minmax(0, 1fr) auto;
+            gap: 10px;
+            align-items: center;
+            padding: 9px 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .document-row:last-child {
+            border-bottom: 0;
+        }
+        .document-date {
+            color: #6b7280;
+            font-weight: 700;
+            font-size: 13px;
+        }
+        .document-name {
+            min-width: 0;
+            font-weight: 700;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .document-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .icon-button {
+            width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border-color: #fecaca;
+            color: #991b1b;
+            background: #fff;
+            font-size: 16px;
+            line-height: 1;
+        }
+        {% if case %}
+            {% for group in document_groups(case) %}
+            #doc-group-{{ group.id }}:checked ~ .tab-labels label[for="doc-group-{{ group.id }}"] {
+                border-color: #2563eb;
+                color: #1d4ed8;
+                background: #eff6ff;
+            }
+            #doc-group-{{ group.id }}:checked ~ .panels #panel-group-{{ group.id }} {
+                display: block;
+            }
+            {% endfor %}
+        {% endif %}
+        @media (max-width: 720px) {
+            .top { align-items: flex-start; flex-direction: column; }
+            .compact-grid { grid-template-columns: 1fr; }
+            .compact-item-wide { grid-column: auto; }
+            .edit-form { grid-template-columns: 1fr; }
+            .edit-wide { grid-column: auto; }
+            .doc-frame { height: 420px; }
+            .document-row { grid-template-columns: 1fr; }
+            .document-actions { flex-wrap: wrap; }
+            .toolbar-right { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <div class="top">
+        <div class="title-row">
+            <h1>{{ client.last_name }} {{ client.first_name }}</h1>
+            {% if case %}
+                <form method="post" action="{{ url_for('verify_case_data', case_id=case.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="next" value="{{ url_for('client_detail', client_id=client.id) }}">
+                    <button class="button-small" type="submit">Ověřit data z PDF dokumentu AI</button>
+                </form>
+            {% endif %}
+        </div>
+        <div class="actions">
+            <a class="button button-light" href="{{ url_for('index') }}">Zpět</a>
+            <a class="button button-light" href="#upravit-klienta">Upravit data klienta</a>
+            <form method="post" action="{{ url_for('delete_client', client_id=client.id) }}" onsubmit="return confirm('Smazat klienta?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="danger" type="submit">Smazat klienta</button>
+            </form>
+        </div>
+    </div>
+
+    <section class="edit-panel" id="upravit-klienta">
+        <form class="edit-form" method="post" action="{{ url_for('update_client', client_id=client.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label>Jméno
+                <input name="first_name" value="{{ client.first_name }}" required>
+            </label>
+            <label>Příjmení
+                <input name="last_name" value="{{ client.last_name }}" required>
+            </label>
+            <label>Datum narození
+                <input type="date" name="birth_date" value="{{ client.birth_date.isoformat() }}" required>
+            </label>
+            <label>Poslední kontrola
+                <input type="datetime-local" name="last_checked_at" value="{{ client.last_checked_at|datetime_local }}">
+            </label>
+            {% if case %}
+                <h2>Insolvenční údaje</h2>
+                <label>Stav řízení
+                    <input name="state" value="{{ case.state or '' }}">
+                </label>
+                <label class="edit-wide">Dlužník
+                    <input name="debtor_name" value="{{ case.debtor_name or '' }}">
+                </label>
+                <label>Spisová značka
+                    <input name="spisova_znacka" value="{{ case.spisova_znacka or '' }}">
+                </label>
+                <label>Datum zahájení
+                    <input type="datetime-local" name="proceeding_started_at" value="{{ case.proceeding_started_at|datetime_local }}">
+                </label>
+                <label>Datum poslední události
+                    <input type="datetime-local" name="last_event_at" value="{{ case.last_event_at|datetime_local }}">
+                </label>
+                <label class="edit-wide">Poslední událost
+                    <input name="last_event_description" value="{{ case.last_event_description or '' }}">
+                </label>
+                <label>Počet dokumentů
+                    <input type="number" min="0" name="document_count" value="{{ case.document_count if case.document_count is not none else '' }}">
+                </label>
+                <label>Lhůta přihlášek
+                    <input name="claims_deadline" value="{{ case.claims_deadline or '' }}">
+                </label>
+                <label>Přihlášky
+                    <input type="number" min="0" name="claims_count" value="{{ case.claims_count if case.claims_count is not none else '' }}">
+                </label>
+                <label>Výše pohledávek
+                    <textarea name="claims_total_amount">{{ case.claims_total_amount or '' }}</textarea>
+                </label>
+            {% endif %}
+            <div class="actions">
+                <button type="submit">Uložit</button>
+                <a class="button button-light" href="#">Zavřít</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="summary-strip">
+        <div class="compact-grid">
+            <div class="compact-item">
+                <span>Klient</span>
+                <strong>{{ client.last_name }} {{ client.first_name }}</strong>
+            </div>
+            <div class="compact-item">
+                <span>Datum narození</span>
+                <strong>{{ client.birth_date|format_date }}</strong>
+            </div>
+            <div class="compact-item">
+                <span>Poslední kontrola</span>
+                <strong>{{ client.last_checked_at|format_datetime }}</strong>
+            </div>
+            <div class="compact-item">
+                <span>Stav řízení</span>
+                <strong><span class="status {{ status_class(case) }}">{{ clean_status(case) }}</span></strong>
+            </div>
+            <div class="compact-item compact-item-wide">
+                <span>Dlužník</span>
+                <strong>{{ case.debtor_name if case and case.debtor_name else "-" }}</strong>
+            </div>
+            <div class="compact-item">
+                <span>Spisová značka</span>
+                <strong>{{ case.spisova_znacka if case else "-" }}</strong>
+            </div>
+            <div class="compact-item">
+                <span>Datum zahájení</span>
+                <strong>{{ case.proceeding_started_at|format_datetime if case else "-" }}</strong>
+            </div>
+            <div class="compact-item compact-item-wide">
+                <span>Poslední událost</span>
+                <strong>{{ event_line(case) }}</strong>
+            </div>
+            <div class="compact-item">
+                <span>Počet dokumentů</span>
+                <strong>{{ case.document_count if case and case.document_count else "-" }}</strong>
+            </div>
+            <div class="compact-item">
+                <span>Lhůta přihlášek</span>
+                <strong>{{ effective_claim_deadline_label(case) }}</strong>
+            </div>
+            <div class="compact-item">
+                <span>Přihlášky</span>
+                <strong>{{ case.claims_count if case and case.claims_count else "-" }}{% if claim_collection_is_running(case) and case and case.claims_count %} !{% endif %}</strong>
+            </div>
+            <div class="compact-item compact-item-wide">
+                <span>Výše pohledávek</span>
+                {% set claims_amount = case.claims_total_amount if case and case.claims_total_amount else "" %}
+                {% if claims_amount|length > 80 %}
+                    <div class="compact-value">
+                        {{ claims_amount[:80] }}...
+                        <details class="expand-value">
+                            <summary>Zobrazit více</summary>
+                            {{ claims_amount }}
+                        </details>
+                    </div>
+                {% else %}
+                    <strong>{{ claims_amount or "-" }}{% if claim_collection_is_running(case) and claims_amount %} !{% endif %}</strong>
+                {% endif %}
+                {% if claim_collection_is_running(case) and (claims_amount or (case and case.claims_count)) %}
+                    <small>{{ claim_collection_warning() }}</small>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2>Dokumenty</h2>
+        {% if case %}
+            {% set latest = namespace(document=None) %}
+            {% for document in case.documents %}
+                {% if document.source_url == case.document_url %}
+                    {% set latest.document = document %}
+                {% endif %}
+            {% endfor %}
+            <input type="radio" name="document-view" id="doc-view-preview" checked>
+            <input type="radio" name="document-view" id="doc-view-list">
+            <div class="document-toolbar">
+                <div class="view-switch">
+                    <label for="doc-view-preview">Náhled PDF</label>
+                    <label for="doc-view-list">Seznam všech PDF</label>
+                </div>
+                <form method="post" action="{{ url_for('analyze_case', case_id=case.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="next" value="{{ url_for('client_detail', client_id=client.id) }}">
+                    <button type="submit">AI shrnutí posledního dokumentu</button>
+                </form>
+                <form class="toolbar-right" method="post" action="{{ url_for('create_case_study', case_id=case.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="next" value="{{ url_for('client_detail', client_id=client.id) }}">
+                    <button type="submit">Vytvoř kazuistiku AI</button>
+                </form>
+                <div class="case-study-status" id="case-study-status">
+                    {% if case_study_pending %}
+                        <span class="ai-working">AI pracuje na kazuistice</span>
+                    {% elif case_study_ready %}
+                        <a class="case-study-link" href="#kazuistika-ai">Zobrazit kazuistiku</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% set groups = document_groups(case) %}
+            {% if groups %}
+                <div class="tabs">
+                    {% for group in groups %}
+                        <input type="radio" name="document-tabs" id="doc-group-{{ group.id }}" {% if loop.first %}checked{% endif %}>
+                    {% endfor %}
+                    <div class="tab-labels">
+                        {% for group in groups %}
+                            <label for="doc-group-{{ group.id }}">
+                                <span class="tab-date">{{ group.event_at|format_date if group.event_at else "-" }}</span>
+                                <span class="tab-name">{{ group.title }}</span>
+                                {% if group.documents|length > 1 %}
+                                    <span class="tab-count">{{ group.documents|length }} PDF</span>
+                                {% endif %}
+                            </label>
+                        {% endfor %}
+                    </div>
+                    <div class="panels">
+                        {% for group in groups %}
+                            <div class="tab-panel" id="panel-group-{{ group.id }}">
+                                <p class="doc-title">{{ group.event_at|format_datetime }} – {{ group.title }}</p>
+                                {% for document in group.documents %}
+                                    <div class="actions">
+                                        <strong>{{ document.document_type }}</strong>
+                                        <a class="button button-light" href="{{ url_for('open_document', document_id=document.id) }}" target="_blank" rel="noopener">Otevřít PDF</a>
+                                        <a class="button button-light" href="{{ url_for('download_document', document_id=document.id) }}">Stáhnout PDF</a>
+                                    </div>
+                                    {% if loop.first %}
+                                        <iframe class="doc-frame" src="{{ url_for('open_document', document_id=document.id) }}"></iframe>
+                                        <p class="pdf-help">
+                                            Pokud se náhled PDF nezobrazí, nainstalujte Google Chrome nebo použijte tlačítko Otevřít PDF / Stáhnout PDF.
+                                        </p>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <p class="muted">Dokumenty zatím nejsou stažené.</p>
+            {% endif %}
+            {% if groups %}
+                <div class="document-list">
+                    {% for document in sorted_documents(case) %}
+                        <div class="document-row">
+                            <div class="document-date">{{ document.event_at|format_datetime if document.event_at else "-" }}</div>
+                            <div class="document-name" title="{{ document.title }}">{{ document.title or document.document_type }}</div>
+                            <div class="document-actions">
+                                <a class="button button-light" href="{{ url_for('open_document', document_id=document.id) }}" target="_blank" rel="noopener">Otevřít PDF</a>
+                                <a class="button button-light" href="{{ url_for('download_document', document_id=document.id) }}">Stáhnout</a>
+                                <form method="post" action="{{ url_for('delete_document', document_id=document.id) }}" onsubmit="return confirm('Smazat toto PDF?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="next" value="{{ url_for('client_detail', client_id=client.id) }}">
+                                    <button class="icon-button" type="submit" title="Smazat PDF" aria-label="Smazat PDF">🗑</button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <div id="ai-refresh-area">
+                {% if case.ai_summary %}
+                    <div class="summary">
+                        <strong>{{ case.ai_category or "AI shrnutí" }}</strong><br>
+                        {{ short_ai_summary(case.ai_summary) }}
+                        {% if case.ai_key_points %}
+                            <br><br><strong>Povinnosti dlužníka:</strong>
+                            <pre style="white-space: pre-wrap; font-family: inherit; margin-bottom: 0;">{{ case.ai_key_points }}</pre>
+                        {% endif %}
+                        {% if case.ai_deadlines %}
+                            <strong>Lhůty:</strong>
+                            <pre style="white-space: pre-wrap; font-family: inherit; margin-bottom: 0;">{{ case.ai_deadlines }}</pre>
+                        {% endif %}
+                        {% if case.ai_recommended_action %}
+                            <strong>Pro sociálního pracovníka:</strong>
+                            <pre style="white-space: pre-wrap; font-family: inherit; margin-bottom: 0;">{{ case.ai_recommended_action }}</pre>
+                        {% endif %}
+                    </div>
+                {% elif case.ai_category %}
+                    <p class="muted">{{ case.ai_category }}</p>
+                {% endif %}
+                {% if case.ai_case_study %}
+                    <div class="summary" id="kazuistika-ai">
+                        <div class="actions">
+                            <strong>Kazuistika AI</strong>
+                            {% if not case.ai_case_study.startswith("AI kazuistika se připravuje") %}
+                                <a class="button button-light" href="{{ url_for('download_case_study', case_id=case.id) }}">Stáhnout kazuistiku</a>
+                            {% endif %}
+                        </div>
+                        {% if case.ai_case_study_at %}
+                            <span class="muted">({{ case.ai_case_study_at|format_datetime }})</span>
+                        {% endif %}
+                        <pre style="white-space: pre-wrap; font-family: inherit; margin-bottom: 0;">{{ case.ai_case_study }}</pre>
+                    </div>
+                {% endif %}
+            </div>
+        {% else %}
+            <p class="muted">Bez insolvenčního řízení.</p>
+        {% endif %}
+    </section>
+</main>
+{% if ai_pending %}
+<script>
+    const aiRefreshTimer = window.setInterval(async function () {
+        try {
+            const response = await fetch(window.location.href, { cache: "no-store" });
+            const html = await response.text();
+            const parsed = new DOMParser().parseFromString(html, "text/html");
+            const nextAi = parsed.getElementById("ai-refresh-area");
+            const currentAi = document.getElementById("ai-refresh-area");
+            const nextHeader = parsed.querySelector(".summary-strip");
+            const currentHeader = document.querySelector(".summary-strip");
+            const nextCaseStudyStatus = parsed.getElementById("case-study-status");
+            const currentCaseStudyStatus = document.getElementById("case-study-status");
+            if (nextAi && currentAi) {
+                currentAi.innerHTML = nextAi.innerHTML;
+            }
+            if (nextHeader && currentHeader) {
+                currentHeader.innerHTML = nextHeader.innerHTML;
+            }
+            if (nextCaseStudyStatus && currentCaseStudyStatus) {
+                currentCaseStudyStatus.innerHTML = nextCaseStudyStatus.innerHTML;
+            }
+            if (!html.includes("AI shrnutí se připravuje") && !html.includes("AI ověření údajů") && !html.includes("AI kazuistika se připravuje")) {
+                window.clearInterval(aiRefreshTimer);
+            }
+        } catch (error) {
+            window.clearInterval(aiRefreshTimer);
+        }
+    }, 6000);
+</script>
+{% endif %}
+</body>
+</html>
