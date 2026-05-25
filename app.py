@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from datetime import date
 from copy import deepcopy
 from io import BytesIO
+import json
 import os
 import shutil
 import sqlite3
@@ -536,6 +537,102 @@ def short_ai_summary(text: str | None) -> str:
     return " ".join(sentences[:5])
 
 
+def clean_ai_value(value) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if normalized_status_text(text) in {"-", "neuvedeno", "nelze overit", "nezjisteno"}:
+        return ""
+    return text
+
+
+def ai_verified_data_proposal(case: InsolvencyCase | None) -> dict:
+    if case is None or not case.ai_raw_result:
+        return {"items": [], "has_applicable": False}
+    if case.ai_category != "AI kontrola údajů z PDF":
+        return {"items": [], "has_applicable": False}
+
+    try:
+        payload = json.loads(case.ai_raw_result)
+    except (TypeError, ValueError):
+        return {"items": [], "has_applicable": False}
+
+    items = []
+    deadline = payload.get("claims_deadline") if isinstance(payload.get("claims_deadline"), dict) else {}
+    amount = payload.get("claims_total_amount") if isinstance(payload.get("claims_total_amount"), dict) else {}
+
+    proposed_deadline = clean_ai_value(deadline.get("pdf_value"))
+    if proposed_deadline:
+        items.append(
+            {
+                "key": "claims_deadline",
+                "label": "Lhůta přihlášek",
+                "current": case.claims_deadline or "-",
+                "proposed": proposed_deadline,
+                "status": deadline.get("status") or "-",
+                "confidence": deadline.get("confidence") or payload.get("confidence") or "-",
+                "source": deadline.get("source") or "-",
+                "will_apply": proposed_deadline != (case.claims_deadline or "").strip(),
+            }
+        )
+
+    proposed_amount = clean_ai_value(amount.get("pdf_value"))
+    if proposed_amount:
+        items.append(
+            {
+                "key": "claims_total_amount",
+                "label": "Výše přihlášených pohledávek",
+                "current": case.claims_total_amount or "-",
+                "proposed": proposed_amount,
+                "status": amount.get("status") or "-",
+                "confidence": payload.get("confidence") or "-",
+                "source": amount.get("source") or "-",
+                "will_apply": proposed_amount != (case.claims_total_amount or "").strip(),
+            }
+        )
+
+    proposed_count = clean_ai_value(amount.get("claims_count"))
+    if proposed_count:
+        current_count = str(case.claims_count) if case.claims_count is not None else ""
+        items.append(
+            {
+                "key": "claims_count",
+                "label": "Počet přihlášek",
+                "current": current_count or "-",
+                "proposed": proposed_count,
+                "status": amount.get("status") or "-",
+                "confidence": payload.get("confidence") or "-",
+                "source": amount.get("source") or "-",
+                "will_apply": proposed_count != current_count,
+            }
+        )
+
+    return {
+        "items": items,
+        "has_applicable": any(item["will_apply"] for item in items),
+    }
+
+
+def apply_ai_verified_data(case: InsolvencyCase) -> list[str]:
+    proposal = ai_verified_data_proposal(case)
+    changed = []
+    values = {item["key"]: item["proposed"] for item in proposal["items"] if item["will_apply"]}
+
+    if values.get("claims_deadline"):
+        case.claims_deadline = values["claims_deadline"]
+        changed.append("lhůta přihlášek")
+    if values.get("claims_total_amount"):
+        case.claims_total_amount = values["claims_total_amount"]
+        changed.append("výše přihlášených pohledávek")
+    if values.get("claims_count"):
+        parsed_count = parse_optional_int(values["claims_count"])
+        if parsed_count is not None:
+            case.claims_count = parsed_count
+            changed.append("počet přihlášek")
+
+    return changed
+
+
 def document_groups(case):
     if case is None:
         return []
@@ -969,6 +1066,7 @@ app.jinja_env.globals.update(
     short_ai_summary=short_ai_summary,
     document_groups=document_groups,
     sorted_documents=sorted_documents,
+    ai_verified_data_proposal=ai_verified_data_proposal,
     effective_claim_deadline_label=effective_claim_deadline_label,
     claim_collection_is_running=claim_collection_is_running,
     claim_collection_warning=claim_collection_warning,
@@ -1596,6 +1694,25 @@ def verify_case_data(case_id: int):
                 id=f"ai_data_verification_{case_id}_{int(datetime.utcnow().timestamp())}",
                 replace_existing=False,
             )
+    finally:
+        session.close()
+
+    return redirect(next_url)
+
+
+@app.post("/cases/<int:case_id>/apply-verified-data")
+def apply_verified_case_data(case_id: int):
+    next_url = request.form.get("next") or url_for("index")
+    session = SessionLocal()
+    try:
+        case = session.get(InsolvencyCase, case_id)
+        if case is not None:
+            changed = apply_ai_verified_data(case)
+            if changed:
+                case.ai_checked_at = datetime.utcnow()
+                case.ai_category = "AI ověřené údaje zapsány"
+                case.ai_summary = "Zapsáno po potvrzení: " + ", ".join(changed) + "."
+            session.commit()
     finally:
         session.close()
 

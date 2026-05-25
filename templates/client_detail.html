@@ -306,6 +306,38 @@
             border-radius: 6px;
             line-height: 1.5;
         }
+        .verification-table {
+            width: 100%;
+            margin: 10px 0 12px;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .verification-table th,
+        .verification-table td {
+            padding: 7px 8px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: left;
+            vertical-align: top;
+        }
+        .verification-table th {
+            color: #475569;
+            background: #f1f5f9;
+            font-weight: 700;
+        }
+        .verification-table tr:last-child td {
+            border-bottom: 0;
+        }
+        .verification-proposed {
+            color: #166534;
+            font-weight: 700;
+        }
+        .verification-note {
+            display: block;
+            margin-top: 3px;
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.35;
+        }
         .muted { color: #6b7280; }
         .pdf-help {
             margin: 8px 0 0;
@@ -701,6 +733,45 @@
                             <pre style="white-space: pre-wrap; font-family: inherit; margin-bottom: 0;">{{ case.ai_recommended_action }}</pre>
                         {% endif %}
                     </div>
+                    {% set verification_proposal = ai_verified_data_proposal(case) %}
+                    {% if verification_proposal["items"] %}
+                        <div class="summary">
+                            <strong>AI navrh zapisu do detailu klienta</strong>
+                            <table class="verification-table">
+                                <thead>
+                                    <tr>
+                                        <th>Udaj</th>
+                                        <th>Aktualne v aplikaci</th>
+                                        <th>Navrh z PDF</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in verification_proposal["items"] %}
+                                        <tr>
+                                            <td>{{ item.label }}</td>
+                                            <td>{{ item.current }}</td>
+                                            <td>
+                                                <span class="verification-proposed">{{ item.proposed }}</span>
+                                                <span class="verification-note">
+                                                    Stav: {{ item.status }}; jistota: {{ item.confidence }}<br>
+                                                    Zdroj: {{ item.source }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% if verification_proposal["has_applicable"] %}
+                                <form method="post" action="{{ url_for('apply_verified_case_data', case_id=case.id) }}" onsubmit="return confirm('Zapsat navrzene hodnoty z AI kontroly do detailu klienta?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="next" value="{{ url_for('client_detail', client_id=client.id) }}">
+                                    <button type="submit">Zapsat overene hodnoty</button>
+                                </form>
+                            {% else %}
+                                <p class="muted">AI nenasla rozdil oproti ulozenym hodnotam.</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
                 {% elif case.ai_category %}
                     <p class="muted">{{ case.ai_category }}</p>
                 {% endif %}
